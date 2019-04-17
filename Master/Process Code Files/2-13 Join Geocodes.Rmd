@@ -1,0 +1,55 @@
+---
+title: "2-13 Join Geocodes"
+author: "Adam Sneath"
+date: "February 13, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(stringr)
+library(sas7bdat)
+library(ggplot2)
+library(ggmap)
+knitr::opts_chunk$set(echo = TRUE)
+options(stringsAsFactors = FALSE)
+setwd("C:/Users/adsne/Desktop/2019 Spring/Healthcare/Project")
+provider <- read.sas7bdat("provider_20181229.sas7bdat")
+practice <- read.sas7bdat("tab1_practice_level.sas7bdat")
+geo <- read.csv("18-Feb-19_prac_geocoded.csv")
+```
+
+```{r Use Raw to Verify Geocoded Data Completeness}
+provider$mbr_count <- NULL
+for (i in 1:(nrow(provider)-1)){
+  if (provider$practice_id2[i] == provider$practice_id2[i+1]) {
+    for (j in 1:5) {
+      if (provider$practice_id2[i] == provider$practice_id2[i+j]) {
+        provider$practice_id2[i+j] = "dummy"
+      }
+      else {break}
+    }
+  }
+}
+test <- left_join(practice,provider,by="practice_id2")
+
+#Convert ID from numeric to string and pad it with 0s to match the other ID
+geo$X <- NULL
+geo$practice_id2 <- as.character(geo$practice_id2)
+geo$practice_id2 <- str_pad(geo$practice_id2,9,"left","0")
+```
+
+```{r Double Check}
+identical(geo$practice_id2,unique(test$practice_id2))
+```
+
+```{r Join Lat and Lon to Full Practice Data}
+geo2 <- data.frame(practice_id2 = geo$practice_id2, lon = geo$lon, lat = geo$lat)
+test2 <- left_join(test,geo2,by="practice_id2")
+```
+
+```{r}
+write.csv(test2,paste0(format(Sys.Date(),"%d-%b-%y"),"_practice_geocoded",".csv"))
+```

@@ -1,0 +1,643 @@
+---
+title: 'Highmark CMS Stars Incentive Program 2018 Shiny Dashboard'
+author: "Adam Sneath, Qing Wen (Maggie), and Pitt Analytics Team"
+date: "March 25, 2019"
+output: html_document
+runtime: shiny
+---
+
+```{r message = FALSE}
+
+#Run this code chunk first to load & define code files; email ars249@pitt.edu (personal: adsneath@gmail.com) with any questions!
+
+library(shiny)
+library(shinydashboard)
+library(ggplot2)
+library(ggmap)
+library(leaflet)
+library(leaflet.extras)
+library(magrittr)
+library(rgdal)
+library(dplyr)
+library(RColorBrewer)
+library(DT)
+
+###========================================================###
+### Update your .csv directory path here* or get errors!!! ###
+###========================================================###
+
+DMD15 <- read.csv("C:/*your_path_here/DMD15.csv")
+C12 <- read.csv("C:/*your_path_here/C12.csv")
+C14 <- read.csv("C:/*your_path_here/C14.csv")
+C15 <- read.csv("C:/*your_path_here/C15.csv")
+C17 <- read.csv("C:/*your_path_here/C17.csv")
+C20 <- read.csv("C:/*your_path_here/C20.csv")
+C01 <- read.csv("C:/*your_path_here/C01.csv")
+C02 <- read.csv("C:/*your_path_here/C02.csv")
+C07 <- read.csv("C:/*your_path_here/C07.csv")
+C13 <- read.csv("C:/*your_path_here/C13.csv")
+C21 <- read.csv("C:/*your_path_here/C21.csv")
+D11 <- read.csv("C:/*your_path_here/D11.csv")
+D12 <- read.csv("C:/*your_path_here/D12.csv")
+D13 <- read.csv("C:/*your_path_here/D13.csv")
+D14 <- read.csv("C:/*your_path_here/D14.csv")
+DMC17 <- read.csv("C:/*your_path_here/DMC17.csv")
+
+DMD15Ranked <- read.csv("C:/*your_path_here/DMD15Ranked.csv")
+C12Ranked <- read.csv("C:/*your_path_here/C12Ranked.csv")
+C14Ranked <- read.csv("C:/*your_path_here/C14Ranked.csv")
+C15Ranked <- read.csv("C:/*your_path_here/C15Ranked.csv")
+C17Ranked <- read.csv("C:/*your_path_here/C17Ranked.csv")
+C20Ranked <- read.csv("C:/*your_path_here/C20Ranked.csv")
+C01Ranked <- read.csv("C:/*your_path_here/C01Ranked.csv")
+C02Ranked <- read.csv("C:/*your_path_here/C02Ranked.csv")
+C07Ranked <- read.csv("C:/*your_path_here/C07Ranked.csv")
+C13Ranked <- read.csv("C:/*your_path_here/C13Ranked.csv")
+C21Ranked <- read.csv("C:/*your_path_here/C21Ranked.csv")
+D11Ranked <- read.csv("C:/*your_path_here/D11Ranked.csv")
+D12Ranked <- read.csv("C:/*your_path_here/D12Ranked.csv")
+D13Ranked <- read.csv("C:/*your_path_here/D13Ranked.csv")
+D14Ranked <- read.csv("C:/*your_path_here/D14Ranked.csv")
+DMC17Ranked <- read.csv("C:/*your_path_here/DMC17Ranked.csv")
+
+```
+
+```{r Runtime}
+
+#Run this chunk second to build and display the dashboard 
+
+#'About' tab - Dashboard instructions
+
+tips <- renderUI({tags$div(tags$h4("~ Use the Dashboard for analysis or visual aid during presentation."),tags$h4("~ Dashboard is interactive, try zooming & searching on the map, or searching the data table."),tags$h4("~ Can zoom entire Dashboard UI with pinch on laptop touch pad - want to add this feature for mouse users."),tags$h4("~ Map point size is best at mid-level zoom: zoom in a few clicks from default, or out a few clicks after searching for a specific location (which auto-zooms to street-level)."),tags$h4("~ Click map points to see practice name & practice denominator in small popup window. The name can be copy-pasted into the data table for more analysis."),tags$h4("~ Data table can be sorted (ascending or descending) for any column."),tags$h4("~ Most useful data table searches are city, or practice name."),tags$h4("~ The 'City.Rank' column is computed with a simple algorithm that ranks each practice within it's 'City' as defined in the data."),tags$h4("~ Regression analysis is ongoing; so far it seems that small denominator practices tend to have lower compliance, which may simply be feature of sample size, rather than actual indicator of poor performance."),tags$h4("~ The table and histograms only display practices with denominator > 2 to avoid excess 0s and 1s (for compliance) from tiny denominator practices. This adjustment intends to more clearly demonstrates the compliance distributions."))})
+
+#Measure Definitions
+
+defDMD15 <- renderUI({tags$h4("The percentage of Members age 40-75 who were dispensed a medication for diabetes that receive a statin medication.")})
+  
+defC12 <- renderUI({tags$h4("The percentage of female Members age 67 - 85 who suffered a fracture and who had either a bone mineral density (BMD) test or prescription for a drug to treat or prevent osteoporosis in the six months after the fracture.")})
+
+defC14 <- renderUI({tags$h4("The percentage of diabetic Members age 18 - 75 who had medical attention for nephropathy.")})
+
+defC15 <- renderUI({tags$h4("The percentage of Members age 18 - 75 with diabetes (type 1 or type 2) whose most recent Hemoglobin A1C is <=9.0%.")})
+
+defC17 <- renderUI({tags$h4("The percentage of Members age 18 and older who were diagnosed with rheumatoid arthritis and who were dispensed at least one ambulatory prescription for a disease-modifying anti-rheumatic drug (DMARD).")})
+
+defC20 <- renderUI({tags$h4("The percentage of discharges from January 1-December 1 of the measurement year for Members 18 years of age and older for whom medications were reconciled the date of discharge through 30 days after discharge (31 total days).")})
+
+defC01 <- renderUI({tags$h4("The percentage of female Members age 50-74 years who had a mammoram to screen for breast cancer.")})
+
+defC02 <- renderUI({tags$h4("The percentage of Members age 50 - 75 who had appropriate screening for colorectal cancer.")})
+
+defC07 <- renderUI({tags$h4("The percentage of Members age 18 - 74 who had an outpatient visit and whose body mass index (BMI) was documented during the measurement period or the year prior to the measurement period.")})
+
+defC13 <- renderUI({tags$h4("The percentage of diabetic Members age 18 - 75 who received an eye screening for diabetic retinal disease.")})
+
+defC21 <- renderUI({tags$h4("For Members age 18 and older, the number of acute inpatient stays during the measurement period that were followed by an unplanned acute readmission for any diagnosis within 30 days over the predicted probability of an acute readmission.  (Displayed as a ratio.)")})
+
+defD11 <- renderUI({tags$h4("The percentage of Members age 18 and older with a prescription for diabetes medication who fill their prescription often enough to cover 80% or more of the time they are prescribed to be taking the medication.  The six classes of diabetes medication include: biguanides, sulfonylureas, thiazolidinediones, DPP-IV inhibitors, incretin mimetic, and meglitinide.")})
+
+defD12 <- renderUI({tags$h4("The percentage of Members age 18 and older with a prescription for a blood pressure medication who fill their prescription often enough to cover 80% or more of the time they are prescribed to be taking the medication.  Blood pressure medication includes: ACE (angiotensin converting enzyme) Inhibitor, ARB (angiotensin receptor blocker), and a direct renin inhibitor.")})
+
+defD13 <- renderUI({tags$h4("The percentage of Members age 18 and older with a prescription for a cholesterol medication (a statin drug) who fill their prescription often enough to cover 80% or more of the time they are prescribed to be taking the medication.")})
+
+defD14 <- renderUI({tags$h4("The percentage of Members age 18 and older enrolled in the Medication Therapy Management (MTM) program who received a Comprehensive Medication Review (CMR) during the measurement period. (CMR must be completed and reported by the CMS approved vendor.  Refer to Supplement A for more MTM program information).")})
+
+defDMC17 <- renderUI({tags$h4("The percentage of male Members age 21 - 75 and female Members age 40 - 75 during the measurement period, who were identified as having clinical atherosclerotic cardiovascular disease and were dispensed at least one high or moderateintensity statin medication during the measurement period.")})
+
+#RColorBrewer pallettes for maps
+
+palDMD15 <- colorNumeric("RdYlGn",DMD15$Star_Rating)
+palC12 <- colorNumeric("RdYlGn",C12$Star_Rating)
+palC14 <- colorNumeric("RdYlGn",C14$Star_Rating)
+palC15 <- colorNumeric("RdYlGn",C15$Star_Rating)
+palC17 <- colorNumeric("RdYlGn",C17$Star_Rating)
+palC20 <- colorNumeric("RdYlGn",C20$Star_Rating)
+palC01 <- colorNumeric("RdYlGn",C01$Star_Rating)
+palC02 <- colorNumeric("RdYlGn",C02$Star_Rating)
+palC07 <- colorNumeric("RdYlGn",C07$Star_Rating)
+palC13 <- colorNumeric("RdYlGn",C13$Star_Rating)
+palC21 <- colorNumeric("RdYlGn",C21$Star_Rating)
+palD11 <- colorNumeric("RdYlGn",D11$Star_Rating)
+palD12 <- colorNumeric("RdYlGn",D12$Star_Rating)
+palD13 <- colorNumeric("RdYlGn",D13$Star_Rating)
+palD14 <- colorNumeric("RdYlGn",D14$Star_Rating)
+palDMC17 <- colorNumeric("RdYlGn",DMC17$Star_Rating)
+
+#Maps
+
+mapDMD15 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data=DMD15,lat=DMD15$Lat,lng=DMD15$Lon,weight=1, fillOpacity=1, radius = 1.9*log(DMD15$Denominator), color = ~palDMD15(DMD15$Star_Rating), popup = paste(DMD15$practice_Name,"<br>Denominator: ",as.character(DMD15$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",DMD15$Star_Rating), values = DMD15$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapC12 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = C12,lat=C12$Lat,lng=C12$Lon, weight=1, fillOpacity=1, radius = 2.3*log(1.75*C12$Denominator), color = ~palC12(C12$Star_Rating), popup = paste(C12$practice_Name,"<br>Denominator:",as.character(C12$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",C12$Star_Rating), values = C12$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapC14 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = C14, lat=C14$Lat,lng=C14$Lon, weight=1, fillOpacity=1, radius = 1.9*log(C14$Denominator), color = ~palC14(C14$Star_Rating), popup = paste(C14$practice_Name,"<br>Denominator: ",as.character(C14$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",C14$Star_Rating), values = C14$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapC15 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = C15, lat=C15$Lat,lng=C15$Lon, weight=1, fillOpacity=1, radius = 1.9*log(C15$Denominator), color = ~palC15(C15$Star_Rating), popup = paste(C15$practice_Name,"<br>Denominator: ",as.character(C15$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",C15$Star_Rating), values = C15$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapC17 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = C17, lat=C17$Lat,lng=C17$Lon, weight=1, fillOpacity=1, radius = 2.1*log(1.75*C17$Denominator), color = ~palC17(C17$Star_Rating), popup = paste(C17$practice_Name,"<br>Denominator: ",as.character(C17$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",C17$Star_Rating), values = C17$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapC20 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = C20, lat=C20$Lat,lng=C20$Lon, weight=1, fillOpacity=1, radius = 1.9*log(C20$Denominator), color = ~palC20(C20$Star_Rating), popup = paste(C20$practice_Name,"<br>Denominator: ",as.character(C20$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",C20$Star_Rating), values = C20$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapC01 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = C01, lat=C01$Lat,lng=C01$Lon, weight=1, fillOpacity=1, radius = 1.9*log(C01$Denominator), color = ~palC01(C01$Star_Rating), popup = paste(C01$practice_Name,"<br>Denominator: ",as.character(C01$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",C01$Star_Rating), values = C01$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapC02 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = C02, lat=C02$Lat,lng=C02$Lon, weight=1, fillOpacity=1, radius = 1.9*log(C02$Denominator), color = ~palC02(C02$Star_Rating), popup = paste(C02$practice_Name,"<br>Denominator: ",as.character(C02$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",C02$Star_Rating), values = C02$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapC07 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = C07, lat=C07$Lat,lng=C07$Lon, weight=1, fillOpacity=1, radius = 1.9*log(C07$Denominator), color = ~palC07(C07$Star_Rating), popup = paste(C07$practice_Name,"<br>Denominator: ",as.character(C07$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",C07$Star_Rating), values = C07$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapC13 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = C13, lat=C13$Lat,lng=C13$Lon, weight=1, fillOpacity=1, radius = 1.9*log(C13$Denominator), color = ~palC13(C13$Star_Rating), popup = paste(C13$practice_Name,"<br>Denominator: ",as.character(C13$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",C13$Star_Rating), values = C13$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapC21 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = C21, lat=C21$Lat,lng=C21$Lon, weight=1, fillOpacity=1, radius = 1.9*log(C21$Denominator), color = ~palC21(C21$Star_Rating), popup = paste(C21$practice_Name,"<br>Denominator: ",as.character(C21$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",C21$Star_Rating), values = C21$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapD11 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = D11, lat=D11$Lat,lng=D11$Lon, weight=1, fillOpacity=1, radius = 1.9*log(D11$Denominator), color = ~palD11(D11$Star_Rating), popup = paste(D11$practice_Name,"<br>Denominator: ",as.character(D11$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",D11$Star_Rating), values = D11$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapD12 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = D12, lat=D12$Lat,lng=D12$Lon, weight=1, fillOpacity=1, radius = 1.9*log(D12$Denominator), color = ~palD12(D12$Star_Rating), popup = paste(D12$practice_Name,"<br>Denominator: ",as.character(D12$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",D12$Star_Rating), values = D12$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapD13 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = D13, lat=D13$Lat,lng=D13$Lon, weight=1, fillOpacity=1, radius = 1.9*log(D13$Denominator), color = ~palD13(D13$Star_Rating), popup = paste(D13$practice_Name,"<br>Denominator: ",as.character(D13$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",D13$Star_Rating), values = D13$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapD14 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = D14, lat=D14$Lat,lng=D14$Lon, weight=1, fillOpacity=1, radius = 1.9*log(D14$Denominator), color = ~palD14(D14$Star_Rating), popup = paste(D14$practice_Name,"<br>Denominator: ",as.character(D14$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",D14$Star_Rating), values = D14$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+mapDMC17 <- leaflet() %>% addTiles() %>% addSearchOSM() %>% addCircleMarkers(data = DMC17, lat=DMC17$Lat,lng=DMC17$Lon, weight=1, fillOpacity=1, radius = 1.9*log(DMC17$Denominator), color = ~palDMC17(DMC17$Star_Rating), popup = paste(DMC17$practice_Name,"<br>Denominator: ",as.character(DMC17$Denominator))) %>% addLegend(pal = colorNumeric("RdYlGn",DMC17$Star_Rating), values = DMC17$Star_Rating, opacity = 0.7, title = "Star Rating", bins = 5, position = "bottomright")
+
+#Compliance Histos
+
+histoDMD15 <- ggplot(DMD15Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoC12 <- ggplot(C12Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoC14 <- ggplot(C14Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoC15 <- ggplot(C15Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoC17 <- ggplot(C17Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoC20 <- ggplot(C20Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoC01 <- ggplot(C01Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoC02 <- ggplot(C02Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoC07 <- ggplot(C07Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoC13 <- ggplot(C13Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoC21 <- ggplot(C21Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoD11 <- ggplot(D11Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoD12 <- ggplot(D12Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoD13 <- ggplot(D13Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoD14 <- ggplot(D14Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+histoDMC17 <- ggplot(DMC17Ranked, aes(x=Compliance)) + geom_histogram(bins = 10,col="black",fill="deepskyblue3") + ggtitle("Where Do You Stand?")
+
+#Practice-level data tables
+
+tabDMD15 <- datatable(DMD15Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC12 <- datatable(C12Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC14 <- datatable(C14Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC15 <- datatable(C15Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC17 <- datatable(C17Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC20 <- datatable(C20Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC20 <- datatable(C20Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC01 <- datatable(C01Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC02 <- datatable(C02Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC07 <- datatable(C07Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC13 <- datatable(C13Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabC21 <- datatable(C21Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabD11 <- datatable(D11Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabD12 <- datatable(D12Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabD13 <- datatable(D13Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabD14 <- datatable(D14Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+tabDMC17 <- datatable(DMC17Ranked,extensions = "Responsive",filter="top", caption="Showing Denominator > 2")
+
+#Unicode circle bullet point
+
+bul <- "\U2022"
+
+#Best practice text
+
+bestDMD15 <- renderUI({tags$div(tags$h4(paste(bul,"Initiate conversation with the patient")),tags$h4(paste(bul,"Review purpose of the medication, and emphasize its importance")),tags$h4("Strategies to improve adherence:"),tags$h4("1.) recommend a 90-day supply"),tags$h4("2.) encourage the patient to enroll in an auto-fill program"), tags$h4("3.) suggest reminder tools such as alarms, a specific storage plan for medication"))})
+
+bestC12 <- renderUI({tags$div(tags$h4(paste(bul,"Taking proper medication")),tags$h4(paste(bul,"Bisphosphonate Therapy has been proved to be very effective. Bisphosphonates are used to treat thin/fragile bones and helps prevent future bone fractures.")), tags$h4(paste(bul,"Teriparatide and denosumab are effective alternative medication for bisphosphonates.")),tags$h4(paste(bul,"Dual energy x-ray absorptiometry screenings for all women 65+ years old is recommended by US Preventative Services Task Force")),tags$h4(paste(bul,"FRAX Fracture Risk Assessment Tool determines fracture risk for younger women")))})
+
+bestC14 <- renderUI({tags$div(tags$h4(paste(bul,"Possible prescription of RAAS-inhibiting drugs")),tags$h4(paste(bul,"Glycemic Control")),tags$h4(paste(bul,"Blood Pressure Management")),tags$h4(paste(bul,"Cholestorol level Management")),tags$h4(paste(bul,"Dietary Sodium Restriction")),tags$h4(paste(bul,"Diuretic Therapy")))})
+
+bestC15 <- renderUI({tags$div(tags$h4(paste(bul,"Set appropriate glycemic targets.")),tags$h4(paste(bul,"Note the progressiveness of Type 2 diabetes - what works now may not work tomorrow. ")),tags$h4(paste(bul,"Culturally specific care and education (diabetes more prevalent in minority populations")),tags$h4(paste(bul,"Provide access to all necessary services at one visit to elminate barriers of travel and transportation")))})
+
+bestC17 <- renderUI({tags$div(tags$h4(paste(bul,"Tight control can prevent or reduce the rate of joint damage.")),tags$h4(paste(bul,"Better educate patients on importance of taking proper medication to motivate them to take their prescriptions regularly.")),tags$h4(paste(bul,"Methotrexate: most commonly used DMARD; shown to work better than any other single medicine.")),tags$h4(paste(bul, "Minocycline (Minocin): antibiotic that helps reduce and cease inflammation")))})
+
+bestC20 <- renderUI({tags$div(tags$h4(paste(bul,"Prompt patient to bring list of current medication")),tags$h4(paste(bul,"Text/Email remind them to bring medication list")),tags$h4(paste(bul,"Have a computer system in place that keeps track of patients current medications")),tags$h4(paste(bul,"Text/Email remind patients to take medication and maintain healthy lifestyle")))})
+
+bestC01 <- renderUI({tags$div(tags$h4(paste(bul,"At every checkup, record the date of the patient's last screening and remind the patient when their next screening should be.")),tags$h4(paste(bul,"Text/Call/Email reminder when they are almost past due for mammogram.")),tags$h4(paste(bul,"For women 50-55, recommend yearly screening, as advised by American Cancer Society.")),tags$h4(paste(bul,"For women 55+ biennial screening is preferred.")),tags$h4(paste(bul,"Explain benefits of regular screenings - breas cancers that are detected when small or nonpalpable are more treatable and thus associated with more favorable prognosis.")),tags$h4(paste(bul,"Evidence has not shown clinical breast examination to be effective in detecting breast cancer in women of average risk among any age group. Mammography alone detects a higher number of breast cancers than clinical breast examination. Clinical breast examination performed in addition to mammography may lead to a higher number of false-positive test results.")))})
+
+bestC02 <- renderUI({tags$div(tags$h4(paste(bul,"Know who to screen and when to screen.")),tags$h4(paste(bul,"Understand harms of unnecessary screening.")),tags$h4(paste(bul,"Provide high-value, cost-conscious care: Older than 75 years should not be screened.")))})
+
+bestC07 <- renderUI({tags$div(tags$h4(paste(bul,"Clearly document the date of service with the height, weight, and BMI calculation or percentile.")),tags$h4(paste(bul,"Verify the accuracy: Make sure the calculation is correct.")))})
+
+bestC13 <- renderUI({tags$div(tags$h4(paste(bul,"Complete AWV and assessment of diabetic member preventitive care/disease progression indicators for all Value Based Reimbursement quality programs.")),tags$h4(paste(bul,"Provide script or referral to ophthalmologist or optometrist to complete the exam. Use referral form with results to be faxed/emailed back to the PCP. Reference Diabetic retinal eye preventitive screening requirement on the referral sheet.")),tags$h4(paste(bul,"Reference measure specifications for appropriate CPT2 code application. For measure specific educational material on CPT2 codes, please contact your Clinical Transformation Consultant or Provider Account Liaison.")))})
+
+bestC21 <- renderUI({tags$div(tags$h4(paste(bul,"Schedule a follow-up visit within seven days of discharge. This is one of the best interventions you can provide to avoid readmission.")),tags$h4(paste(bul,"Ensure all discharge instructions are reviewed with patients at follow-up visit.")),tags$h4(paste(bul,"Refer patients to a transition program.")),tags$h4(paste(bul,"Confirm all chronic condition diagnoses have been well-documented for diagnostic accuracy.")))})
+
+bestD11 <- renderUI({tags$div(tags$h4(paste(bul,"Develop a culture (i.e. protocol) of 90-day prescriptions and refills.")),tags$h4(paste(bul,"Reduce the number of daily doses of medications (i.e. BID, TID, QID); if at all possible, precribe once daily medications.")),tags$h4(paste(bul,"Educate patients on the importance of medication adherence.")),tags$h4(paste(bul,"Frequent clinic visits (every 2 months) Star Ratings Performance Thresholds.")),tags$h4(paste(bul,"Package medications into special containers (e.g. pill boxes or blister packs).")),tags$h4(paste(bul,"Tele-monitoring with interactive voice response technology.")),tags$h4(paste(bul,"Health coach for complex case management to address medication adherence barriers.")))})
+
+bestD12 <- renderUI({tags$div(tags$h4(paste(bul,"Text/Call/Email reminder to refill their prescription.")),tags$h4(paste(bul,"Discuss several options of medication - let patients choose brands, etc. (since generic brands tend to be less costly.")),tags$h4(paste(bul,"Devise 60 or 90-day prescription plan and refills.")),tags$h4(paste(bul,"Educate patients on the importance of medication adherence and its benefits.")),tags$h4(paste(bul,"Thoroughly explain how each prescription affects the patient's health.")))})
+
+bestD13 <- renderUI({tags$div(tags$h4(paste(bul,"Identify all patients who are prescribed medication for these categories.")),tags$h4(paste(bul,"Prep chart to ensure that provider discusses importance of ongoing compliance.")),tags$h4(paste(bul,"Discuss with patients the benefits of adhering to medication - Nurse/Physician/Medical assistant/Physician extender.")),tags$h4(paste(bul,"Utilize medication adherence report to identify those trending poorly about compliance.")),tags$h4(paste(bul,"Provide ongoing patient outreach to those showing as non-compliant.")),tags$h4(paste(bul,"Identify reason for non-compliance and attempt to solve.")),tags$h4(paste(bul,"Educate patients about their condition and explain why the medication is being prescribed.")),tags$h4(paste(bul,"Use motivational interviewing to help patients commit to taking their medication and set goals for taking their medications.")),tags$h4(paste(bul,"Ask patients what routine they use to help them remember to take their medications (apps, alarms, pillboxes).")),tags$h4(paste(bul,"Discourage 'pill splitting' or taking medications every other day. If dosage changes, rewrite prescription to accurately reflect the dose.")),tags$h4(paste(bul,"Consider 90-day fills when writing prescriptions.")),tags$h4(paste(bul,"Encourage patients to utilize their insurance card for identifying other services that may be beneficial to them. Samples, paying in cash and using discount cards will not generate an insurance claim, and Highmark will not be able to measure compliance. These patients will appear as non-compliant with the measure.")),tags$h4(paste(bul,"Be proactive. Evaluate practice processes for opportunities to close gaps every time the patient is seen rather than reacting to gap closure reports.")))})
+
+bestD14 <- renderUI({tags$div(tags$h4(paste(bul,"Clearly document services provided and medications used in treating the patient.")),tags$h4(paste(bul,"Know when to correctly perform MTM.")),tags$h4(paste(bul,"Create private area for MTM (use a curtain).")),tags$h4(paste(bul,"Educate the patient; make sure they clearly understand the services that they have been provided and the medication they received.")),tags$h4(paste(bul,"Continuous learning! Stay up-to-date on new ways to conduct Medication Therapy Management.")))})
+
+bestDMC17 <- renderUI({tags$div(tags$h4(paste(bul,"Understand the proper dosage: Initiate a low to moderate intensity statin in adults aged 40-75 years with one or more CVD risk factor and a 10-year CVD event risk of 10% or greater. Consider selective initiation of low to moderate intensity statin therapy in adults aged 40-75 years with one or more CVD risk factors and a 10-year CVD event risk between 7.5% and 10%.")),tags$h4(paste(bul,"Understand the risk of developing cardiovascular disease: Age, having one or more CVD risk factors, and calculated 10-year risk of a cardiovascular event.")),tags$h4(paste(bul,"Understand who to prescribe statins to: Use guidelines to determine whether the benefits outweigh the risks on an individual basis.")))})
+
+#Scatter Plots
+
+scatterDMD15 <- ggplot(data=DMD15) + geom_point(aes(x=DMD15$Denominator,y=DMD15$Compliance))
+
+scatterC12 <- ggplot(data=C12) + geom_point(aes(x=C12$Denominator,y=C12$Compliance))
+
+scatterC14 <- ggplot(data=C14) + geom_point(aes(x=C14$Denominator,y=C14$Compliance))
+
+scatterC15 <- ggplot(data=C15) + geom_point(aes(x=C15$Denominator,y=C15$Compliance))
+
+scatterC17 <- ggplot(data=C17) + geom_point(aes(x=C17$Denominator,y=C17$Compliance))
+
+scatterC20 <- ggplot(data=C20) + geom_point(aes(x=C20$Denominator,y=C20$Compliance))
+
+scatterC01 <- ggplot(data=C01) + geom_point(aes(x=C01$Denominator,y=C01$Compliance))
+
+scatterC02 <- ggplot(data=C02) + geom_point(aes(x=C02$Denominator,y=C02$Compliance))
+
+scatterC07 <- ggplot(data=C07) + geom_point(aes(x=C07$Denominator,y=C07$Compliance))
+
+scatterC13 <- ggplot(data=C13) + geom_point(aes(x=C13$Denominator,y=C13$Compliance))
+
+scatterC21 <- ggplot(data=C21) + geom_point(aes(x=C21$Denominator,y=C21$Compliance))
+
+scatterD11 <- ggplot(data=D11) + geom_point(aes(x=D11$Denominator,y=D11$Compliance))
+
+scatterD12 <- ggplot(data=D12) + geom_point(aes(x=D12$Denominator,y=D12$Compliance))
+
+scatterD13 <- ggplot(data=D13) + geom_point(aes(x=D13$Denominator,y=D13$Compliance))
+
+scatterD14 <- ggplot(data=D14) + geom_point(aes(x=D14$Denominator,y=D14$Compliance))
+
+scatterDMC17 <- ggplot(data=DMC17) + geom_point(aes(x=DMC17$Denominator,y=DMC17$Compliance))
+
+###============================###
+### Load Dashboard Starts Here ###
+###============================###
+
+ui <- dashboardPage(
+  dashboardHeader(
+    title = "2018 CMS Stars Dashboard"
+  ),
+  dashboardSidebar(  
+    sidebarMenu(
+      menuItem("Dashboard Introduction", tabName = "introduction", icon = icon("dashboard")),
+      menuItem("DMD 15", tabName = "dmd15", icon = icon("stethoscope"), badgeLabel = "Bad", badgeColor = "red"),
+      menuItem("C 12", tabName = "C12", icon = icon("stethoscope"), badgeLabel = "Bad", badgeColor = "red"),
+      menuItem("C 14", tabName = "c14", icon = icon("stethoscope"), badgeLabel = "Bad", badgeColor = "red"),
+      menuItem("C 15", tabName = "c15", icon = icon("stethoscope"), badgeLabel = "Bad", badgeColor = "red"),
+      menuItem("C 17", tabName = "c17", icon = icon("stethoscope"), badgeLabel = "Bad", badgeColor = "red"),
+      menuItem("C 20", tabName = "C20", icon = icon("stethoscope"), badgeLabel = "Bad", badgeColor = "red"),
+      menuItem("C 21", tabName = "C21", icon = icon("stethoscope"), badgeLabel = "Bad", badgeColor = "red"),
+      menuItem("C 01", tabName = "C01", icon = icon("stethoscope"), badgeLabel = "OK", badgeColor = "yellow"),
+      menuItem("C 02", tabName = "C02", icon = icon("stethoscope"), badgeLabel = "OK", badgeColor = "yellow"),
+      menuItem("C 07", tabName = "C07", icon = icon("stethoscope"), badgeLabel = "OK", badgeColor = "yellow"),
+      menuItem("C 13", tabName = "C13", icon = icon("stethoscope"), badgeLabel = "OK", badgeColor = "yellow"),
+      menuItem("D 11", tabName = "D11", icon = icon("stethoscope"), badgeLabel = "OK", badgeColor = "yellow"),
+      menuItem("D 13", tabName = "D13", icon = icon("stethoscope"), badgeLabel = "OK", badgeColor = "yellow"),
+      menuItem("DMC 17", tabName = "DMC17", icon = icon("stethoscope"), badgeLabel = "OK", badgeColor = "yellow"),
+      menuItem("D 12", tabName = "D12", icon = icon("stethoscope"), badgeLabel = "Good", badgeColor = "green"),
+      menuItem("D 14", tabName = "D14", icon = icon("stethoscope"), badgeLabel = "Good", badgeColor = "green")
+      )
+  ),
+  dashboardBody(
+    tabItems(
+      tabItem(tabName = "introduction", h1("About"),
+              fluidRow(box(title = "Helpful Tips", status = "primary", solidHeader = T,background = "aqua",uiOutput("tips"),width=12)
+              )
+      ),
+      tabItem(tabName = "dmd15", h1("DMD15 Statin Use in Persons with Diabetes"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defDMD15"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapDMD15")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoDMD15"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabDMD15'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestDMD15")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regDMD15")) 
+              )
+      ),
+      tabItem(tabName = "C12", h1(" C12 Osteoporosis Management in Women who had a Fracture"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defC12"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapC12")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoC12"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabC12'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestC12")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regC12")) 
+              )
+      ),
+      tabItem(tabName = "c14", h1("C14 Comprehensive Diabetes Care: Medical Attention for Nephropathy"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defC14"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapC14")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoC14"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabC14'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestC14")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regC14")) 
+              )
+      ),
+      tabItem(tabName = "c15", h1("C15 Comprehensive Diabetes Care: HbA1c Control (<=9%) (DYNAMIC)"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defC15"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapC15")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoC15"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabC15'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestC15")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regC15")) 
+              )
+      ),
+      tabItem(tabName = "c17", h1("C17 Disease-Modifying Anti-Rheumatic Drug Therapy for Rheumatoid Arthritis"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defC17"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapC17")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoC17"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabC17'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestC17")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regC17")) 
+              )
+      ),
+      tabItem(tabName = "C20", h1("C20 Medication Reconciliation Post-Discharge"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defC20"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapC20")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoC20"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabC20'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestC20")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regC20")) 
+              )
+      ),
+      tabItem(tabName = "C21", h1("C21 All Cause Readmissions"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defC21"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapC21")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoC21"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabC21'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestC21")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regC21")) 
+              )
+      ),
+      tabItem(tabName = "C01", h1("C01 Breast Cancer Screening"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defC01"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapC01")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoC01"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabC01'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestC01")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regC01")) 
+              )
+      ),
+      tabItem(tabName = "C02", h1("C02 Colorectal Cancer Screening"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defC02"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapC02")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoC02"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabC02'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestC02")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regC02")) 
+              )
+      ),
+      tabItem(tabName = "C07", h1("C07 Adult BMI Assessment"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defC07"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapC07")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoC07"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabC07'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestC07")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regC07")) 
+              )
+      ),
+      tabItem(tabName = "C13", h1("C13 Medication Reconciliation Post-Discharge"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defC13"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapC13")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoC13"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabC13'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestC13")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regC13")) 
+              )
+      ),
+      tabItem(tabName = "D11", h1("D11 Medication Adherence for Diabetes Medication"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defD11"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapD11")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoD11"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabD11'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestD11")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regD11")) 
+              )
+      ),
+      tabItem(tabName = "D13", h1("D13 Medication Adherence for Cholesterol (Statins)"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defD13"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapD13")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoD13"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabD13'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestD13")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regD13")) 
+              )
+      ),
+      tabItem(tabName = "DMC17", h1("DMC17 Statin Therapy for Patients With Cardiovascular Disease"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defDMC17"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapDMC17")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoDMC17"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabDMC17'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestDMC17")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regDMC17")) 
+              )
+      ),
+      tabItem(tabName = "D12", h1("D12 Medication Adherence for Hypertension: Renin Angiotensin System Antagonists (RASA)"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defD12"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapD12")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoD12"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabD12'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestD12")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regD12")) 
+              )
+      ),
+      tabItem(tabName = "D14", h1("D14 MTM Program Completion Rate for CMR"),
+              fluidRow(box(title = "Definition", status = "primary", solidHeader = T,background = "aqua",uiOutput("defD14"),width=12)
+              ),
+              fluidRow(box(title = "Compliance by Location", status = "primary", solidHeader = T, background = "aqua",leafletOutput("mapD14")),
+                       box(title = "Compliance Histogram", status = "primary", solidHeader = T,background = "aqua",plotOutput("histoD14"))
+              ),
+              fluidRow(box(DT::dataTableOutput('tabD14'),width = 12)
+              ),
+              fluidRow(box(title = "Best Practices", status = "primary", solidHeader = T,background = "aqua",uiOutput("bestD14")),
+                       box(title = "Denominator as Predictor", status = "primary", solidHeader = T,background = "aqua",plotOutput("regD14")) 
+              )
+      )
+    )
+  )
+)
+
+server <- function(input,output) {
+  #'About' tab instructions
+  output$tips <- tips
+  #Definitions
+  output$defDMD15 <- defDMD15
+  output$defC12 <- defC12
+  output$defC14 <- defC14
+  output$defC15 <- defC15
+  output$defC17 <- defC17
+  output$defC20 <- defC20
+  output$defC21 <- defC21
+  output$defC01 <- defC01
+  output$defC02 <- defC02
+  output$defC07 <- defC07
+  output$defC13 <- defC13
+  output$defD11 <- defD11
+  output$defD13 <- defD13
+  output$defDMC17 <- defDMC17
+  output$defD12 <- defD12
+  output$defD14 <- defD14
+  #Data Tables
+  output$tabDMD15 <- DT::renderDataTable({tabDMD15})
+  output$tabC12 <- DT::renderDataTable({tabC12})
+  output$tabC14 <- DT::renderDataTable({tabC14})
+  output$tabC15 <- DT::renderDataTable({tabC15})
+  output$tabC17 <- DT::renderDataTable({tabC17})
+  output$tabC20 <- DT::renderDataTable({tabC20})
+  output$tabC21 <- DT::renderDataTable({tabC21})
+  output$tabC01 <- DT::renderDataTable({tabC01})
+  output$tabC02 <- DT::renderDataTable({tabC02})
+  output$tabC07 <- DT::renderDataTable({tabC07})
+  output$tabC13 <- DT::renderDataTable({tabC13})
+  output$tabD11 <- DT::renderDataTable({tabD11})
+  output$tabD13 <- DT::renderDataTable({tabD13})
+  output$tabDMC17 <- DT::renderDataTable({tabDMC17})
+  output$tabD12 <- DT::renderDataTable({tabD12})
+  output$tabD14 <- DT::renderDataTable({tabD14})
+  #Maps
+  output$mapDMD15 <- renderLeaflet({mapDMD15})
+  output$mapC12 <- renderLeaflet({mapC12})
+  output$mapC14 <- renderLeaflet({mapC14})
+  output$mapC15 <- renderLeaflet({mapC15})
+  output$mapC17 <- renderLeaflet({mapC17})
+  output$mapC20 <- renderLeaflet({mapC20})
+  output$mapC21 <- renderLeaflet({mapC21})
+  output$mapC01 <- renderLeaflet({mapC01})
+  output$mapC02 <- renderLeaflet({mapC02})
+  output$mapC07 <- renderLeaflet({mapC07})
+  output$mapC13 <- renderLeaflet({mapC13})
+  output$mapD11 <- renderLeaflet({mapD11})
+  output$mapD13 <- renderLeaflet({mapD13})
+  output$mapDMC17 <- renderLeaflet({mapDMC17})
+  output$mapD12 <- renderLeaflet({mapD12})
+  output$mapD14 <- renderLeaflet({mapD14})
+  #Compliance Histos
+  output$histoDMD15 <- renderPlot({histoDMD15})
+  output$histoC12 <- renderPlot({histoC12})
+  output$histoC14 <- renderPlot({histoC14})
+  output$histoC15 <- renderPlot({histoC15})
+  output$histoC17 <- renderPlot({histoC17})
+  output$histoC20 <- renderPlot({histoC20})
+  output$histoC21 <- renderPlot({histoC21})
+  output$histoC01 <- renderPlot({histoC01})
+  output$histoC02 <- renderPlot({histoC02})
+  output$histoC07 <- renderPlot({histoC07})
+  output$histoC13 <- renderPlot({histoC13})
+  output$histoD11 <- renderPlot({histoD11})
+  output$histoD13 <- renderPlot({histoD13})
+  output$histoDMC17 <- renderPlot({histoDMC17})
+  output$histoD12 <- renderPlot({histoD12})
+  output$histoD14 <- renderPlot({histoD14})
+  #Scatter Plots
+  output$regDMD15 <- renderPlot({scatterDMD15})
+  output$regC12 <- renderPlot({scatterC12})
+  output$regC14 <- renderPlot({scatterC14})
+  output$regC15 <- renderPlot({scatterC15})
+  output$regC17 <- renderPlot({scatterC17})
+  output$regC20 <- renderPlot({scatterC20})
+  output$regC21 <- renderPlot({scatterC21})
+  output$regC01 <- renderPlot({scatterC01})
+  output$regC02 <- renderPlot({scatterC02})
+  output$regC07 <- renderPlot({scatterC07})
+  output$regC13 <- renderPlot({scatterC13})
+  output$regD11 <- renderPlot({scatterD11})
+  output$regD13 <- renderPlot({scatterD13})
+  output$regDMC17 <- renderPlot({scatterDMC17})
+  output$regD12 <- renderPlot({scatterD12})
+  output$regD14 <- renderPlot({scatterD14})
+  #Best Practices 
+  output$bestDMD15 <- bestDMD15
+  output$bestC12 <- bestC12
+  output$bestC14 <- bestC14
+  output$bestC15 <- bestC15
+  output$bestC17 <- bestC17
+  output$bestC20 <- bestC20
+  output$bestC21 <- bestC21
+  output$bestC01 <- bestC01
+  output$bestC02 <- bestC02
+  output$bestC07 <- bestC07
+  output$bestC13 <- bestC13
+  output$bestD11 <- bestD11
+  output$bestD13 <- bestD13
+  output$bestDMC17 <- bestDMC17
+  output$bestD12 <- bestD12
+  output$bestD14 <- bestD14
+  
+}
+
+shinyApp(ui,server)
+
+```

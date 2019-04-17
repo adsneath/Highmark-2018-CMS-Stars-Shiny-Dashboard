@@ -1,0 +1,54 @@
+---
+title: "2-13 Regression Model"
+author: "Adam Sneath"
+date: "February 13, 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyr)
+library(magrittr)
+library(stringr)
+library(sas7bdat)
+library(ggplot2)
+library(ggmap)
+knitr::opts_chunk$set(echo = TRUE)
+options(stringsAsFactors = FALSE)
+setwd("C:/Users/adsne/Desktop/2019 Spring/Healthcare/Project")
+provider <- read.sas7bdat(file = 'provider_20181229.sas7bdat')
+practice <- read.sas7bdat(file = 'tab1_practice_level.sas7bdat')
+```
+
+```{r Concantenate Address to add City State and Zip, message=FALSE, warning=FALSE}
+#Join provider to practice (primary key = practice_id2) to get addresses
+
+#Eliminate 'mbr_count' from provider data, because it's already in practice and it confuses the left_join function
+provider$mbr_count <- NULL
+colnames(provider)[14] <- "practice_id_2"
+colnames(provider)[3] <- "practice_id2"
+joind <- left_join(practice,provider, by="practice_id2")
+
+#Verify Join
+identical((practice)[,1:47],joind[,1:47]) 
+#Returns TRUE
+
+#Concantenate all address info 
+joind$FULL_ADDRESS <- paste(joind$MAIN_ADDR1,joind$MAIN_CITY,joind$MAIN_STATE,joind$MAIN_ZIPCODE,sep=", ")
+
+#New data frame with unique addresses only for geocoding (otherwise it will code all the duplicates and take forever)
+geo <- joind %>% distinct(joind$practice_id2,.keep_all = TRUE)
+```
+
+```{r Geocoding Adresses (2500 daily query limit per Google API)}
+register_google("xxxxx_Your_API_Key_Here_xxxxxxxx")
+for(i in 1:nrow(geo)) {
+   result <- geocode(geo$FULL_ADDRESS[i], output = "latlona", source = "google")
+   geo$lon[i] <- as.numeric(result[1])
+   geo$lat[i] <- as.numeric(result[2])
+   geo$geoAddress[i] <- as.character(result[3])
+}
+
+#Write this to csv to avoid having to re-run the geocoding if future endeavors go awry 
+write.csv(geo,paste0(format(Sys.Date(),"%d-%b-%y"),"_prac_geocoded",".csv"))
+```
