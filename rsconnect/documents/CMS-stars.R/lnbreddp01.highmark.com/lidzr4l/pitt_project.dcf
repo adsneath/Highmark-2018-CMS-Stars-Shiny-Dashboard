@@ -1,0 +1,13 @@
+name: pitt_project
+title: pitt_project
+username: lidzr4l
+account: lidzr4l
+server: lnbreddp01.highmark.com
+hostUrl: http://lnbreddp01.highmark.com:3939/__api__
+appId: 7
+bundleId: 12
+url: http://lnbreddp01.highmark.com:3939/content/7/
+when: 1555680283.58825
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: README.md|verification.docx|process/clean.Rmd|process/geocoding.Rmd|process/join_geocodes.Rmd
