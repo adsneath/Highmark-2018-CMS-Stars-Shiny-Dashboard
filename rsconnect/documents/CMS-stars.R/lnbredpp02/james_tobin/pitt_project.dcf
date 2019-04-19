@@ -1,0 +1,13 @@
+name: pitt_project
+title: pitt_project
+username: james_tobin
+account: james_tobin
+server: lnbredpp02
+hostUrl: http://lnbredpp02:3939/__api__
+appId: 241
+bundleId: 1357
+url: http://lnbredpp02:3939/content/241/
+when: 1555638457.757
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: README.md|verification.docx|process/clean.Rmd|process/geocoding.Rmd|process/join_geocodes.Rmd
